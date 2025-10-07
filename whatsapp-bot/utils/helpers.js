@@ -5,11 +5,6 @@ class BotHelpers {
     // Check if user is admin in the group
     static async isUserAdmin(chat, userId) {
         try {
-            // Ensure we have the full chat object with participants
-            if (!chat.participants) {
-                await chat.fetchParticipants();
-            }
-            
             const participants = chat.participants;
             if (!participants || !Array.isArray(participants)) {
                 console.log('No participants found or invalid participants structure');
@@ -25,32 +20,23 @@ class BotHelpers {
                 console.log(`Participant ${index + 1}: ${participantId}, isAdmin: ${p.isAdmin}`);
             });
             
+            // Extract the phone number from userId (remove @lid, @c.us, etc.)
+            const userPhone = userId.replace(/@.*$/, ''); // Remove everything after @
+            console.log(`Extracted user phone: ${userPhone}`);
+            
+            // Find participant by matching phone numbers
             const participant = participants.find(p => {
                 const participantId = p.id._serialized || p.id;
-                console.log(`Comparing: ${participantId} === ${userId}`);
-                return participantId === userId;
+                const participantPhone = participantId.replace(/@.*$/, ''); // Remove everything after @
+                console.log(`Comparing phones: ${participantPhone} === ${userPhone}`);
+                return participantPhone === userPhone;
             });
             
             if (participant) {
                 console.log(`Found participant: ${participant.id._serialized || participant.id}, isAdmin: ${participant.isAdmin}`);
                 return participant.isAdmin === true;
             } else {
-                console.log(`Participant not found for userId: ${userId}`);
-                // Try alternative matching - extract phone number and compare
-                const userPhone = userId.split('@')[0];
-                console.log(`Trying alternative match with phone: ${userPhone}`);
-                
-                const altParticipant = participants.find(p => {
-                    const participantId = p.id._serialized || p.id;
-                    const participantPhone = participantId.split('@')[0];
-                    return participantPhone === userPhone;
-                });
-                
-                if (altParticipant) {
-                    console.log(`Found alternative match: ${altParticipant.id._serialized || altParticipant.id}, isAdmin: ${altParticipant.isAdmin}`);
-                    return altParticipant.isAdmin === true;
-                }
-                
+                console.log(`Participant not found for userId: ${userId} (phone: ${userPhone})`);
                 return false;
             }
         } catch (error) {
@@ -62,11 +48,6 @@ class BotHelpers {
     // Check if bot is admin in the group
     static async isBotAdmin(chat, botId) {
         try {
-            // Ensure we have the full chat object with participants
-            if (!chat.participants) {
-                await chat.fetchParticipants();
-            }
-            
             const participants = chat.participants;
             if (!participants || !Array.isArray(participants)) {
                 console.log('No participants found for bot admin check');
@@ -96,11 +77,6 @@ class BotHelpers {
     // Get all group members
     static async getGroupMembers(chat) {
         try {
-            // Ensure we have the full chat object with participants
-            if (!chat.participants) {
-                await chat.fetchParticipants();
-            }
-            
             const participants = chat.participants;
             if (!participants || !Array.isArray(participants)) {
                 console.log('No participants found in getGroupMembers');

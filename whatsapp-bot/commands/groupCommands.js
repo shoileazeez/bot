@@ -7,17 +7,26 @@ class GroupCommands {
 
     async handleCommand(client, message, chat) {
         const { command, args } = BotHelpers.parseCommand(message);
-        const senderId = message.author || message.from;
+        let senderId = message.author || message.from;
         const groupId = chat.id._serialized;
 
         console.log(`Command received: ${command} from ${senderId} in group ${groupId}`);
 
-        // Force refresh participants to ensure we have complete data
+        // Try to get the actual contact information
         try {
-            await chat.fetchParticipants();
-            console.log(`Refreshed participants. Total: ${chat.participants ? chat.participants.length : 0}`);
+            const contact = await message.getContact();
+            if (contact && contact.id && contact.id._serialized) {
+                const contactId = contact.id._serialized;
+                console.log(`Contact ID from message: ${contactId}`);
+                
+                // Use contact ID if it's different from sender ID
+                if (contactId !== senderId) {
+                    console.log(`Using contact ID instead of sender ID: ${contactId}`);
+                    senderId = contactId;
+                }
+            }
         } catch (error) {
-            console.error('Error refreshing participants:', error);
+            console.log('Could not get contact info, using original sender ID');
         }
 
         // Check if bot is admin
