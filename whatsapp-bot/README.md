@@ -11,10 +11,13 @@ A comprehensive WhatsApp bot for group management with automated features, fine 
 - **!add <phone>** - Add member to group by phone number
 - **!remove <phone>** - Remove member from group by phone number
 - **!kick <phone>** - Kick member from group (same as remove)
+- **!promote <phone>** - Promote member to group admin
+- **!demote <phone>** - Demote admin to regular member
 - **!roast @user** - Roast a group member with funny insults
 - **!help** - Display all available commands
 - **!fine** - Check individual fine status
 - **!fines** - Weekly fine summary (Sundays only)
+- **!debug** - Show debug information (troubleshooting)
 
 ### Automated Features
 - **Daily Warning System** - Track inactive users and apply fines
@@ -128,6 +131,12 @@ npm start
 
 !roast @1234567890
 # Roasts the mentioned user with funny insults
+
+!promote +1234567890
+# Promotes user to group admin
+
+!demote +1234567890
+# Demotes admin to regular member
 
 !help
 # Shows all available commands

@@ -4,6 +4,7 @@
   "description": "WhatsApp bot for group management with quotes, announcements, fine system, and private assistant",
   "main": "index.js",
   "scripts": {
+    "build": "echo 'Building project...'",
     "start": "node index.js",
     "dev": "nodemon index.js",
     "init-db": "node utils/database.js"

@@ -305,6 +305,16 @@ _User will be added if they accept the invitation._ 🎉`;
                 } else if (addError.message.includes('limit')) {
                     errorMessage += '👥 *Reason:* Group participant limit reached.\n';
                     errorMessage += '💡 *Solution:* Remove inactive members first.';
+                } else if (addError.message.includes('Evaluation failed')) {
+                    errorMessage += '🔧 *Reason:* WhatsApp Web interface error.\n';
+                    errorMessage += '💡 *Possible causes:*\n';
+                    errorMessage += '• User has blocked the group admin\n';
+                    errorMessage += '• User has strict privacy settings\n';
+                    errorMessage += '• WhatsApp temporary restriction\n';
+                    errorMessage += '• Try inviting manually via invite link';
+                } else if (addError.message.includes('privacy')) {
+                    errorMessage += '🔐 *Reason:* User privacy settings are too strict.\n';
+                    errorMessage += '💡 *Solution:* User must join manually or change privacy settings.';
                 } else {
                     errorMessage += `🔧 *Technical Error:* ${addError.message}\n`;
                     errorMessage += '💡 *Solution:* Try again later or contact support.';
@@ -518,7 +528,7 @@ _It's all fun and games! Don't take it seriously!_ 😄`;
             const targetMember = members.find(member => member.phone === targetPhone);
             
             if (!targetMember) {
-                await message.reply('❌ This user is not in the group.');
+                await message.reply(`❌ User with phone number +${targetPhone} is not in this group.`);
                 return;
             }
 
@@ -531,15 +541,17 @@ _It's all fun and games! Don't take it seriously!_ 😄`;
             // Get contact info for name
             try {
                 const contact = await client.getContactById(targetMember.id);
-                targetName = contact.pushname || contact.name || 'Unknown';
+                targetName = contact.pushname || contact.name || `+${targetPhone}`;
             } catch (err) {
                 console.log('Could not get contact name:', err);
+                targetName = `+${targetPhone}`;
             }
 
-            // Promote user to admin
-            await chat.promoteParticipants([targetMember.id]);
-            
-            const successMessage = `👑 *User Promoted Successfully!*
+            // Promote user to admin with proper error handling
+            try {
+                await chat.promoteParticipants([targetMember.id]);
+                
+                const successMessage = `👑 *User Promoted Successfully!*
 
 📱 Phone: +${targetPhone}
 👤 Name: ${targetName}
@@ -549,21 +561,36 @@ _It's all fun and games! Don't take it seriously!_ 😄`;
 
 _Congratulations on your new role!_ 🎉`;
 
-            await message.reply(successMessage);
-            
-        } catch (error) {
-            console.error('Error promoting user:', error);
-            
-            let errorMessage = '❌ Failed to promote user. ';
-            if (error.message.includes('403')) {
-                errorMessage += 'Bot may not have sufficient permissions.';
-            } else if (error.message.includes('404')) {
-                errorMessage += 'User not found in the group.';
-            } else {
-                errorMessage += 'Please try again.';
+                await message.reply(successMessage);
+                
+            } catch (promoteError) {
+                console.error('WhatsApp promote error:', promoteError);
+                
+                let errorMessage = '❌ Failed to promote user.\n\n';
+                
+                if (promoteError.message.includes('403') || promoteError.message.includes('Forbidden')) {
+                    errorMessage += '🔒 *Reason:* Insufficient permissions to promote users.\n';
+                    errorMessage += '💡 *Solution:* Ensure bot has admin privileges and try again.';
+                } else if (promoteError.message.includes('404') || promoteError.message.includes('Not Found')) {
+                    errorMessage += '👤 *Reason:* User not found or no longer in group.\n';
+                    errorMessage += '💡 *Solution:* Verify the user is still in the group.';
+                } else if (promoteError.message.includes('limit')) {
+                    errorMessage += '👥 *Reason:* Maximum number of admins reached.\n';
+                    errorMessage += '💡 *Solution:* Demote another admin first.';
+                } else if (promoteError.message.includes('Evaluation failed')) {
+                    errorMessage += '🔧 *Reason:* WhatsApp Web interface error.\n';
+                    errorMessage += '💡 *Solution:* Try again in a few moments.';
+                } else {
+                    errorMessage += `🔧 *Technical Error:* ${promoteError.message}\n`;
+                    errorMessage += '💡 *Solution:* Contact support if issue persists.';
+                }
+                
+                await message.reply(errorMessage);
             }
             
-            await message.reply(errorMessage);
+        } catch (error) {
+            console.error('Error in promote command:', error);
+            await message.reply('❌ An unexpected error occurred while promoting user. Please try again.');
         }
     }
 
@@ -601,36 +628,48 @@ _Congratulations on your new role!_ 🎉`;
             const targetMember = members.find(member => member.phone === targetPhone);
             
             if (!targetMember) {
-                await message.reply('❌ This user is not in the group.');
+                await message.reply(`❌ User with phone number +${targetPhone} is not in this group.`);
                 return;
             }
 
             // Check if user is actually an admin
             if (!targetMember.isAdmin) {
-                await message.reply('❌ This user is not a group admin.');
+                await message.reply('❌ This user is not a group admin, so cannot be demoted.');
                 return;
             }
 
-            // Prevent demoting the group creator (if possible to detect)
-            // Note: This is a basic check, WhatsApp doesn't always provide creator info
-            const senderId = message.author || message.from;
+            // Prevent demoting yourself
+            let senderId = message.author || message.from;
+            
+            // Try to get the real contact ID
+            try {
+                const contact = await message.getContact();
+                if (contact && contact.id && contact.id._serialized) {
+                    senderId = contact.id._serialized;
+                }
+            } catch (error) {
+                console.log('Could not get contact info for sender');
+            }
+            
             if (targetMember.id === senderId) {
-                await message.reply('❌ You cannot demote yourself.');
+                await message.reply('❌ You cannot demote yourself. Ask another admin to demote you.');
                 return;
             }
 
             // Get contact info for name
             try {
                 const contact = await client.getContactById(targetMember.id);
-                targetName = contact.pushname || contact.name || 'Unknown';
+                targetName = contact.pushname || contact.name || `+${targetPhone}`;
             } catch (err) {
                 console.log('Could not get contact name:', err);
+                targetName = `+${targetPhone}`;
             }
 
-            // Demote user from admin
-            await chat.demoteParticipants([targetMember.id]);
-            
-            const successMessage = `📉 *User Demoted Successfully!*
+            // Demote user from admin with proper error handling
+            try {
+                await chat.demoteParticipants([targetMember.id]);
+                
+                const successMessage = `📉 *User Demoted Successfully!*
 
 📱 Phone: +${targetPhone}
 👤 Name: ${targetName}
@@ -640,21 +679,33 @@ _Congratulations on your new role!_ 🎉`;
 
 _Admin privileges have been removed._ 📝`;
 
-            await message.reply(successMessage);
-            
-        } catch (error) {
-            console.error('Error demoting user:', error);
-            
-            let errorMessage = '❌ Failed to demote user. ';
-            if (error.message.includes('403')) {
-                errorMessage += 'Bot may not have sufficient permissions or user is group creator.';
-            } else if (error.message.includes('404')) {
-                errorMessage += 'User not found in the group.';
-            } else {
-                errorMessage += 'Please try again.';
+                await message.reply(successMessage);
+                
+            } catch (demoteError) {
+                console.error('WhatsApp demote error:', demoteError);
+                
+                let errorMessage = '❌ Failed to demote user.\n\n';
+                
+                if (demoteError.message.includes('403') || demoteError.message.includes('Forbidden')) {
+                    errorMessage += '🔒 *Reason:* Insufficient permissions or user is group creator.\n';
+                    errorMessage += '💡 *Solution:* Group creators cannot be demoted by other admins.';
+                } else if (demoteError.message.includes('404') || demoteError.message.includes('Not Found')) {
+                    errorMessage += '👤 *Reason:* User not found or no longer in group.\n';
+                    errorMessage += '💡 *Solution:* Verify the user is still in the group.';
+                } else if (demoteError.message.includes('Evaluation failed')) {
+                    errorMessage += '🔧 *Reason:* WhatsApp Web interface error.\n';
+                    errorMessage += '💡 *Solution:* Try again in a few moments.';
+                } else {
+                    errorMessage += `🔧 *Technical Error:* ${demoteError.message}\n`;
+                    errorMessage += '💡 *Solution:* Contact support if issue persists.';
+                }
+                
+                await message.reply(errorMessage);
             }
             
-            await message.reply(errorMessage);
+        } catch (error) {
+            console.error('Error in demote command:', error);
+            await message.reply('❌ An unexpected error occurred while demoting user. Please try again.');
         }
     }
 }
