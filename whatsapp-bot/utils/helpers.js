@@ -74,14 +74,28 @@ class BotHelpers {
         }
     }
 
-    // Get all group members
-    static async getGroupMembers(chat) {
+    // Get all group members with forced refresh
+    static async getGroupMembers(chat, forceRefresh = false) {
         try {
+            // Force refresh participants if requested
+            if (forceRefresh) {
+                try {
+                    // Force WhatsApp to reload participants
+                    await chat.sendSeen();
+                    // Wait a moment for WhatsApp to update
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                } catch (refreshError) {
+                    console.log('Could not force refresh participants:', refreshError.message);
+                }
+            }
+            
             const participants = chat.participants;
             if (!participants || !Array.isArray(participants)) {
                 console.log('No participants found in getGroupMembers');
                 return [];
             }
+            
+            console.log(`Found ${participants.length} participants in group`);
             
             return participants.map(p => ({
                 id: p.id._serialized || p.id,
@@ -298,8 +312,8 @@ class BotHelpers {
 
     // Validate phone number format
     static validatePhoneNumber(phoneNumber) {
-        // Remove spaces, dashes, and plus signs
-        const cleaned = phoneNumber.replace(/[\s\-\+]/g, '');
+        // Remove spaces, dashes, plus signs, and parentheses
+        const cleaned = phoneNumber.replace(/[\s\-\+\(\)]/g, '');
         
         // Check if it's a valid number (8-15 digits)
         const phoneRegex = /^\d{8,15}$/;
@@ -311,17 +325,61 @@ class BotHelpers {
         const cleaned = this.validatePhoneNumber(phoneNumber);
         if (!cleaned) return null;
         
-        // Add country code if not present
-        if (cleaned.length === 10 && !cleaned.startsWith('234')) {
-            return '234' + cleaned; // Nigerian country code
+        // Add country code if not present (assuming Nigerian numbers)
+        if (cleaned.length === 10 && cleaned.startsWith('0')) {
+            // Convert 0XXXXXXXXX to 234XXXXXXXXX
+            return '234' + cleaned.substring(1);
+        } else if (cleaned.length === 11 && cleaned.startsWith('0')) {
+            // Convert 0XXXXXXXXXXX to 234XXXXXXXXXXX  
+            return '234' + cleaned.substring(1);
+        } else if (cleaned.length === 10 && !cleaned.startsWith('234')) {
+            // Add 234 prefix for 10-digit numbers
+            return '234' + cleaned;
+        } else if (cleaned.length === 11 && !cleaned.startsWith('234')) {
+            // Add 234 prefix for 11-digit numbers
+            return '234' + cleaned;
         }
+        
         return cleaned;
     }
 
-    // Extract phone number from mention
+    // Extract phone number from mention or format it
     static extractPhoneFromMention(mentionText) {
         // Remove @ and any spaces
-        return mentionText.replace('@', '').replace(/\s/g, '');
+        const cleaned = mentionText.replace('@', '').replace(/\s/g, '');
+        return this.formatPhoneForWhatsApp(cleaned);
+    }
+
+    // Better phone matching for participant lookup
+    static findParticipantByPhone(participants, targetPhone) {
+        // First try exact match
+        let participant = participants.find(p => {
+            const participantPhone = p.id.user || (p.id._serialized ? p.id._serialized.split('@')[0] : p.id.split('@')[0]);
+            return participantPhone === targetPhone;
+        });
+        
+        if (participant) return participant;
+        
+        // Try with different formatting
+        const alternativeFormats = [
+            targetPhone.startsWith('234') ? targetPhone.substring(3) : '234' + targetPhone,
+            targetPhone.startsWith('0') ? '234' + targetPhone.substring(1) : '0' + targetPhone,
+            targetPhone.length === 10 ? '234' + targetPhone : targetPhone.substring(3)
+        ];
+        
+        for (const altPhone of alternativeFormats) {
+            participant = participants.find(p => {
+                const participantPhone = p.id.user || (p.id._serialized ? p.id._serialized.split('@')[0] : p.id.split('@')[0]);
+                return participantPhone === altPhone;
+            });
+            
+            if (participant) {
+                console.log(`Found participant with alternative format: ${altPhone}`);
+                return participant;
+            }
+        }
+        
+        return null;
     }
 
     // Generate help text

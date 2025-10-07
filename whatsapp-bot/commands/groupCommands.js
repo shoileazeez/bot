@@ -280,6 +280,17 @@ _Please settle your fines to avoid accumulation._`;
             try {
                 await chat.addParticipants([participantId]);
                 
+                // Wait a moment for WhatsApp to update
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                // Force refresh the participant list
+                try {
+                    await chat.sendSeen();
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                } catch (refreshError) {
+                    console.log('Could not refresh participants after add');
+                }
+                
                 const successMessage = `✅ *User Add Request Sent!*
 
 📱 Phone: +${phoneNumber}
@@ -344,14 +355,18 @@ _User will be added if they accept the invitation._ 🎉`;
 
             const participantId = `${phoneNumber}@c.us`;
             
-            // Check if user is in the group
-            const members = await BotHelpers.getGroupMembers(chat);
-            const targetMember = members.find(member => member.phone === phoneNumber);
+            // Check if user is in the group - with forced refresh and better matching
+            const members = await BotHelpers.getGroupMembers(chat, true);
+            console.log(`Remove: Searching for phone ${phoneNumber} among ${members.length} members`);
+            
+            const targetMember = BotHelpers.findParticipantByPhone(members, phoneNumber);
             
             if (!targetMember) {
-                await message.reply('❌ This user is not in the group.');
+                await message.reply(`❌ This user is not in the group.\n\n📱 *Phone searched:* +${phoneNumber}\n📝 *Current members:* ${members.length}`);
                 return;
             }
+
+            console.log(`Remove: Found target member: ${targetMember.phone}`);
 
             // Check if trying to remove an admin (additional protection)
             if (targetMember.isAdmin) {
@@ -416,14 +431,18 @@ _User has been kicked from the group._ 🚪`;
                 }
             }
 
-            // Check if user is in the group
-            const members = await BotHelpers.getGroupMembers(chat);
-            const targetMember = members.find(member => member.phone === targetPhone);
+            // Check if user is in the group - with forced refresh and better matching
+            const members = await BotHelpers.getGroupMembers(chat, true);
+            console.log(`Roast: Searching for phone ${targetPhone} among ${members.length} members`);
+            
+            const targetMember = BotHelpers.findParticipantByPhone(members, targetPhone);
             
             if (!targetMember) {
-                await message.reply('❌ This user is not in the group.');
+                await message.reply(`❌ This user is not in the group.\n\n📱 *Phone searched:* +${targetPhone}\n📝 *Current members:* ${members.length}\n💡 *Tip:* Check the phone number format.`);
                 return;
             }
+
+            console.log(`Roast: Found target member: ${targetMember.phone}`);
 
             // Don't roast admins (optional protection)
             if (targetMember.isAdmin) {
@@ -523,14 +542,23 @@ _It's all fun and games! Don't take it seriously!_ 😄`;
                 }
             }
 
-            // Check if user is in the group
-            const members = await BotHelpers.getGroupMembers(chat);
-            const targetMember = members.find(member => member.phone === targetPhone);
+            // Check if user is in the group - with forced refresh and better matching
+            const members = await BotHelpers.getGroupMembers(chat, true);
+            console.log(`Searching for phone ${targetPhone} among ${members.length} members`);
+            
+            // Log all member phones for debugging
+            members.forEach((member, index) => {
+                console.log(`Member ${index + 1}: ${member.phone}, ID: ${member.id}`);
+            });
+            
+            const targetMember = BotHelpers.findParticipantByPhone(members, targetPhone);
             
             if (!targetMember) {
-                await message.reply(`❌ User with phone number +${targetPhone} is not in this group.`);
+                await message.reply(`❌ User with phone number +${targetPhone} is not in this group.\n\n📝 *Current members:* ${members.length}\n💡 *Tip:* Make sure the phone number format is correct.`);
                 return;
             }
+
+            console.log(`Found target member: ${targetMember.phone}, isAdmin: ${targetMember.isAdmin}`);
 
             // Check if user is already an admin
             if (targetMember.isAdmin) {
@@ -623,14 +651,18 @@ _Congratulations on your new role!_ 🎉`;
                 }
             }
 
-            // Check if user is in the group
-            const members = await BotHelpers.getGroupMembers(chat);
-            const targetMember = members.find(member => member.phone === targetPhone);
+            // Check if user is in the group - with forced refresh and better matching
+            const members = await BotHelpers.getGroupMembers(chat, true);
+            console.log(`Demote: Searching for phone ${targetPhone} among ${members.length} members`);
+            
+            const targetMember = BotHelpers.findParticipantByPhone(members, targetPhone);
             
             if (!targetMember) {
-                await message.reply(`❌ User with phone number +${targetPhone} is not in this group.`);
+                await message.reply(`❌ User with phone number +${targetPhone} is not in this group.\n\n📝 *Current members:* ${members.length}\n💡 *Tip:* Make sure the phone number format is correct.`);
                 return;
             }
+
+            console.log(`Demote: Found target member: ${targetMember.phone}, isAdmin: ${targetMember.isAdmin}`);
 
             // Check if user is actually an admin
             if (!targetMember.isAdmin) {

@@ -23,8 +23,25 @@ class WhatsAppBot {
                     '--no-first-run',
                     '--no-zygote',
                     '--single-process',
-                    '--disable-gpu'
-                ]
+                    '--disable-gpu',
+                    '--disable-web-security',
+                    '--disable-features=VizDisplayCompositor',
+                    '--disable-extensions',
+                    '--disable-plugins',
+                    '--disable-images',
+                    '--disable-javascript',
+                    '--disable-default-apps',
+                    '--disable-sync',
+                    '--disable-translate',
+                    '--hide-scrollbars',
+                    '--mute-audio',
+                    '--no-default-browser-check',
+                    '--no-first-run',
+                    '--disable-background-timer-throttling',
+                    '--disable-backgrounding-occluded-windows',
+                    '--disable-renderer-backgrounding'
+                ],
+                executablePath: process.env.CHROME_PATH || undefined
             }
         });
 
@@ -39,14 +56,14 @@ class WhatsAppBot {
     initializeEventHandlers() {
         // QR Code for authentication
         this.client.on('qr', (qr) => {
-            console.log('í´„ Scan this QR code with your WhatsApp:');
+            console.log('ï¿½ï¿½ï¿½ Scan this QR code with your WhatsApp:');
             qrcode.generate(qr, { small: true });
         });
 
         // Client ready
         this.client.on('ready', async () => {
             console.log('âœ… WhatsApp Bot is ready!');
-            console.log(`í³± Bot number: ${this.client.info.wid.user}`);
+            console.log(`ï¿½ï¿½ï¿½ Bot number: ${this.client.info.wid.user}`);
             
             // Initialize automation after client is ready
             this.automation = new BotAutomation(this.client, this.db);
@@ -60,7 +77,7 @@ class WhatsAppBot {
 
         // Client disconnected
         this.client.on('disconnected', (reason) => {
-            console.log('í³´ Client was logged out:', reason);
+            console.log('ï¿½ï¿½ï¿½ Client was logged out:', reason);
         });
 
         // Message received
@@ -141,16 +158,16 @@ class WhatsAppBot {
 
         // Send welcome message if bot is admin
         if (botIsAdmin) {
-            const welcomeMessage = `í´– *${process.env.BOT_NAME || 'GroupBot'} Activated!*
+            const welcomeMessage = `ï¿½ï¿½ï¿½ *${process.env.BOT_NAME || 'GroupBot'} Activated!*
 
 Thanks for adding me to the group! I'm here to help with:
 
-í³ Group management commands
-í¼… Daily morning quotes  
+ï¿½ï¿½ï¿½ Group management commands
+ï¿½ï¿½ï¿½ Daily morning quotes  
 ï¿½ï¿½ Announcements
-í±¥ Member tagging
-í²° Fine tracking system
-í³… Automated scheduling
+ï¿½ï¿½ï¿½ Member tagging
+ï¿½ï¿½ï¿½ Fine tracking system
+ï¿½ï¿½ï¿½ Automated scheduling
 
 Type !help to see all available commands.
 
@@ -173,7 +190,7 @@ _Note: I need admin privileges to work properly!_ âš¡`;
             if (notification.type === 'promote' && 
                 notification.participants.includes(this.client.info.wid._serialized)) {
                 
-                const promotedMessage = `í¾‰ *Admin Privileges Granted!*
+                const promotedMessage = `ï¿½ï¿½ï¿½ *Admin Privileges Granted!*
 
 Great! I now have admin privileges and can provide full functionality:
 
@@ -189,12 +206,12 @@ Type !help to see all available commands.`;
     }
 
     async start() {
-        console.log('íº€ Starting WhatsApp Bot...');
+        console.log('ï¿½ï¿½ï¿½ Starting WhatsApp Bot...');
         await this.client.initialize();
     }
 
     async stop() {
-        console.log('í»‘ Stopping WhatsApp Bot...');
+        console.log('ï¿½ï¿½ï¿½ Stopping WhatsApp Bot...');
         if (this.automation) {
             this.automation.stopAllJobs();
         }
@@ -208,13 +225,13 @@ const bot = new WhatsAppBot();
 
 // Handle process termination
 process.on('SIGINT', async () => {
-    console.log('\ní´„ Shutting down bot gracefully...');
+    console.log('\nï¿½ï¿½ï¿½ Shutting down bot gracefully...');
     await bot.stop();
     process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
-    console.log('\ní´„ Received SIGTERM, shutting down...');
+    console.log('\nï¿½ï¿½ï¿½ Received SIGTERM, shutting down...');
     await bot.stop();
     process.exit(0);
 });
