@@ -96,19 +96,100 @@ class BotHelpers {
 
     // Fetch random quote from API
     static async getRandomQuote() {
-        try {
-            const response = await axios.get(process.env.QUOTE_API_URL || 'https://api.quotable.io/random');
-            return {
-                text: response.data.content,
-                author: response.data.author
-            };
-        } catch (error) {
-            console.error('Error fetching quote:', error);
-            return {
+        // Array of quote APIs to try (in order)
+        const quoteAPIs = [
+            {
+                name: 'ZenQuotes',
+                url: 'https://zenquotes.io/api/random',
+                parser: (data) => ({
+                    text: data[0].q,
+                    author: data[0].a
+                })
+            },
+            {
+                name: 'QuoteGarden',
+                url: 'https://quotegarden.herokuapp.com/api/v3/quotes/random',
+                parser: (data) => ({
+                    text: data.data.quoteText.replace(/["""]/g, ''),
+                    author: data.data.quoteAuthor || 'Unknown'
+                })
+            },
+            {
+                name: 'Quotable (HTTP)',
+                url: 'http://api.quotable.io/random',
+                parser: (data) => ({
+                    text: data.content,
+                    author: data.author
+                })
+            }
+        ];
+
+        // Try each API until one works
+        for (const api of quoteAPIs) {
+            try {
+                console.log(`Trying ${api.name} API...`);
+                const response = await axios.get(api.url, {
+                    timeout: 5000,
+                    headers: {
+                        'User-Agent': 'WhatsApp Bot/1.0'
+                    }
+                });
+                
+                const quote = api.parser(response.data);
+                console.log(`Successfully got quote from ${api.name}`);
+                return quote;
+            } catch (error) {
+                console.error(`${api.name} API failed:`, error.message);
+                continue; // Try next API
+            }
+        }
+
+        // If all APIs fail, use fallback quotes
+        console.log('All quote APIs failed, using fallback quotes');
+        const fallbackQuotes = [
+            {
                 text: "Success is not final, failure is not fatal: it is the courage to continue that counts.",
                 author: "Winston Churchill"
-            };
-        }
+            },
+            {
+                text: "The only way to do great work is to love what you do.",
+                author: "Steve Jobs"
+            },
+            {
+                text: "Innovation distinguishes between a leader and a follower.",
+                author: "Steve Jobs"
+            },
+            {
+                text: "Life is what happens to you while you're busy making other plans.",
+                author: "John Lennon"
+            },
+            {
+                text: "The future belongs to those who believe in the beauty of their dreams.",
+                author: "Eleanor Roosevelt"
+            },
+            {
+                text: "It is during our darkest moments that we must focus to see the light.",
+                author: "Aristotle"
+            },
+            {
+                text: "The way to get started is to quit talking and begin doing.",
+                author: "Walt Disney"
+            },
+            {
+                text: "Don't let yesterday take up too much of today.",
+                author: "Will Rogers"
+            },
+            {
+                text: "You learn more from failure than from success. Don't let it stop you. Failure builds character.",
+                author: "Unknown"
+            },
+            {
+                text: "If you are working on something that you really care about, you don't have to be pushed. The vision pulls you.",
+                author: "Steve Jobs"
+            }
+        ];
+        
+        return fallbackQuotes[Math.floor(Math.random() * fallbackQuotes.length)];
     }
 
     // Format phone number

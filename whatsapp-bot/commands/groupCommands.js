@@ -276,31 +276,46 @@ _Please settle your fines to avoid accumulation._`;
                 return;
             }
 
-            // Add participant to group
-            await chat.addParticipants([participantId]);
-            
-            const successMessage = `✅ *User Added Successfully!*
+            // Add participant to group - with better error handling
+            try {
+                await chat.addParticipants([participantId]);
+                
+                const successMessage = `✅ *User Add Request Sent!*
 
 📱 Phone: +${phoneNumber}
-👥 Added to: ${chat.name}
+👥 Group: ${chat.name}
 
-_Welcome to the group!_ 🎉`;
+_User will be added if they accept the invitation._ 🎉`;
 
-            await message.reply(successMessage);
-            
-        } catch (error) {
-            console.error('Error adding participant:', error);
-            
-            let errorMessage = '❌ Failed to add participant. ';
-            if (error.message.includes('403')) {
-                errorMessage += 'User privacy settings may prevent adding them.';
-            } else if (error.message.includes('404')) {
-                errorMessage += 'Phone number not found on WhatsApp.';
-            } else {
-                errorMessage += 'Please check the phone number and try again.';
+                await message.reply(successMessage);
+            } catch (addError) {
+                console.error('WhatsApp add participant error:', addError);
+                
+                let errorMessage = '❌ Failed to add participant.\n\n';
+                
+                if (addError.message.includes('403') || addError.message.includes('Forbidden')) {
+                    errorMessage += '🔒 *Reason:* User privacy settings prevent adding them.\n';
+                    errorMessage += '💡 *Solution:* Ask them to join manually or send group invite link.';
+                } else if (addError.message.includes('404') || addError.message.includes('Not Found')) {
+                    errorMessage += '📱 *Reason:* Phone number not found on WhatsApp.\n';
+                    errorMessage += '💡 *Solution:* Verify the number is correct and has WhatsApp.';
+                } else if (addError.message.includes('400') || addError.message.includes('Bad Request')) {
+                    errorMessage += '⚠️ *Reason:* Invalid phone number or user cannot be added.\n';
+                    errorMessage += '💡 *Solution:* Check the phone number format.';
+                } else if (addError.message.includes('limit')) {
+                    errorMessage += '👥 *Reason:* Group participant limit reached.\n';
+                    errorMessage += '💡 *Solution:* Remove inactive members first.';
+                } else {
+                    errorMessage += `🔧 *Technical Error:* ${addError.message}\n`;
+                    errorMessage += '💡 *Solution:* Try again later or contact support.';
+                }
+                
+                await message.reply(errorMessage);
             }
             
-            await message.reply(errorMessage);
+        } catch (error) {
+            console.error('Error in add command:', error);
+            await message.reply('❌ An unexpected error occurred. Please try again.');
         }
     }
 
@@ -442,10 +457,6 @@ _It's all fun and games! Don't take it seriously!_ 😄`;
             const botId = client.info.wid._serialized;
             
             // Get all participants
-            if (!chat.participants) {
-                await chat.fetchParticipants();
-            }
-            
             const participants = chat.participants || [];
             
             let debugInfo = `🔍 *Debug Information*\n\n`;
