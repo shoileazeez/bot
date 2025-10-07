@@ -19,29 +19,13 @@ class WhatsAppBot {
                     '--no-sandbox',
                     '--disable-setuid-sandbox',
                     '--disable-dev-shm-usage',
-                    '--disable-accelerated-2d-canvas',
+                    '--disable-gpu',
                     '--no-first-run',
                     '--no-zygote',
-                    '--single-process',
-                    '--disable-gpu',
-                    '--disable-web-security',
-                    '--disable-features=VizDisplayCompositor',
-                    '--disable-extensions',
-                    '--disable-plugins',
-                    '--disable-images',
-                    '--disable-javascript',
-                    '--disable-default-apps',
-                    '--disable-sync',
-                    '--disable-translate',
-                    '--hide-scrollbars',
-                    '--mute-audio',
-                    '--no-default-browser-check',
-                    '--no-first-run',
-                    '--disable-background-timer-throttling',
-                    '--disable-backgrounding-occluded-windows',
-                    '--disable-renderer-backgrounding'
+                    '--disable-features=VizDisplayCompositor'
                 ],
-                executablePath: process.env.CHROME_PATH || undefined
+                executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome-stable',
+                timeout: 60000
             }
         });
 
